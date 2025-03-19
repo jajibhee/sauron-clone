@@ -1,0 +1,28 @@
+[build]
+  command = "bun run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NEXT_TELEMETRY_DISABLED = "1"
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
+[[redirects]]
+  from = "/*"
+  to = "/_ipx"
+  status = 200
+  force = true
+  conditions = {Path = ["/images/*"]}
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[images]
+  remote_images = [
+    "https://source.unsplash.com/.*",
+    "https://images.unsplash.com/.*",
+    "https://ext.same-assets.com/*",
+    "https://ugc.same-assets.com/.*"
+  ]
