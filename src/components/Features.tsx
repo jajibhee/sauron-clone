@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import { motion, useScroll, useTransform, cubicBezier } from "framer-motion";
 
@@ -35,6 +35,7 @@ const FeatureCard = ({ title, description, imageSrc, imageAlt, index }: {
 
 export default function Features() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
 
   // Features data
   const features = [
@@ -67,71 +68,77 @@ export default function Features() {
   const backEase = cubicBezier(0.16, 1, 0.3, 1);
   const bounceEase = cubicBezier(0.34, 1.56, 0.64, 1);
   
-  // Create a single scroll progress tracker for the entire container
+  // Create a scroll progress tracker that starts earlier
+  // This will begin the animation as the user scrolls down from the hero section
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ["start", "end"],
+    offset: ["start end", "end end"], // Start when the container's top reaches the viewport's bottom
   });
 
   return (
-    <section className="bg-background relative">
+    <section ref={sectionRef} className="bg-background relative">
       <div className="text-center py-16">
         <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold">The Sauron Platform</h2>
       </div>
 
-      {/* Scroll animation container */}
+      {/* Scroll animation container - now starts animating earlier */}
       <div 
         ref={containerRef} 
-        className="h-[300vh] relative"
+        className="h-[250vh] relative"
       >
-        {/* First card is shown immediately */}
+        {/* Sticky container to hold the cards */}
         <div className="min-h-screen sticky top-0 flex items-center justify-center overflow-hidden">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative h-[80vh] max-h-[900px]">
             {features.map((feature, index) => {
-              // Calculate precise ranges for each feature card with wider transition windows
-              // Each card gets a portion of the total scroll range
-              const startShow = Math.max(0, index * scrollSegmentSize - 0.05); // Start a bit earlier
-              const fullyVisible = index * scrollSegmentSize + 0.15; // Longer ramp up
-              const startHide = (index + 0.7) * scrollSegmentSize; // Start hiding earlier
-              const endHide = (index + 1.05) * scrollSegmentSize; // End hiding later
+              // For the first card, show it earlier in the scroll sequence
+              // This makes it appear as you're scrolling from the hero section
+              const startShow = index === 0 ? 0 : Math.max(0, index * scrollSegmentSize - 0.05);
+              const fullyVisible = index === 0 ? 0.1 : index * scrollSegmentSize + 0.15; // First card reaches full opacity earlier
+              const startHide = (index + 0.7) * scrollSegmentSize;
+              
+              // Make sure the last card finishes before reaching the end
+              const endHide = index === features.length - 1 
+                ? Math.min(0.95, (index + 1.05) * scrollSegmentSize) 
+                : (index + 1.05) * scrollSegmentSize;
 
-              // Transform values based on precise scroll segments with smoother transitions
+              // Adjusted transform values that respond to scroll earlier
               const opacity = useTransform(
                 scrollYProgress,
                 [startShow, fullyVisible, startHide, endHide],
-                [0, 1, 1, 0],
+                // First card starts partially visible and gets fully visible quickly
+                [index === 0 ? 0.5 : 0, 1, 1, 0],
                 { ease: smoothEase }
               );
               
-              // More gradual y movement
+              // More responsive movement as scroll begins
               const y = useTransform(
                 scrollYProgress,
                 [startShow, fullyVisible],
-                [150, 0],
+                [index === 0 ? 50 : 150, 0], // First card has less initial offset
                 { ease: backEase }
               );
               
-              // Smoother scale transition
+              // Gradual scale change that's visible earlier
               const scale = useTransform(
                 scrollYProgress,
                 [startShow, fullyVisible],
-                [0.85, 1],
+                [index === 0 ? 0.95 : 0.85, 1], // First card starts closer to full size
                 { ease: bounceEase }
               );
               
-              // Gentler rotation with longer transition
+              // Subtler rotation that starts earlier
               const rotate = useTransform(
                 scrollYProgress,
                 [startShow, fullyVisible, startHide],
-                [3, 0, -1], // Slight counter-rotation at end for natural feel
+                [index === 0 ? 1 : 3, 0, -1],
                 { ease: backEase }
               );
 
-              // Add slight x movement for more dimension
+              // Horizontal movement that starts earlier
               const x = useTransform(
                 scrollYProgress,
                 [startShow, fullyVisible, startHide],
-                [50, 0, -20],
+                [index === 0 ? 20 : 50, 0, -20],
                 { ease: backEase }
               );
 
@@ -148,10 +155,14 @@ export default function Features() {
                     zIndex: features.length - index,
                   }}
                   transition={{ duration: 0.1 }}
-                  initial={index === 0 ? 
-                    { opacity: 1, y: 0, x: 0, scale: 1, rotateZ: 0 } : 
-                    { opacity: 0, y: 150, x: 50, scale: 0.85, rotateZ: 3 }
-                  }
+                  // Initial values for when the component first mounts - first card is partially visible
+                  initial={{ 
+                    opacity: index === 0 ? 0.5 : 0,
+                    y: index === 0 ? 50 : 150,
+                    x: index === 0 ? 20 : 50,
+                    scale: index === 0 ? 0.95 : 0.85,
+                    rotateZ: index === 0 ? 1 : 3
+                  }}
                 >
                   <div className="w-full h-full bg-card border border-border/10 shadow-2xl rounded-2xl p-6 md:p-10 lg:p-12 overflow-hidden">
                     <FeatureCard
