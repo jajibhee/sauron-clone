@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { VariableSizeList as List, ListChildComponentProps } from 'react-window';
 import { Eye, Search, Play, Pause, X, Calendar, Filter } from "lucide-react";
 
 // Activity type definitions
@@ -36,10 +38,33 @@ type Activity = EntryActivity | SecurityActivity | AlertActivity;
 // Time period for filtering
 type TimePeriod = "today" | "week" | "month" | "all";
 
+// GroupedActivity type for virtualized list
+type GroupedActivityItem = {
+  type: 'date-header' | 'activity';
+  date?: string;
+  activity?: Activity;
+};
+
 export default function Dashboard() {
   const [isLive, setIsLive] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("today");
+  const [listHeight, setListHeight] = useState(500);
+  const activityContainerRef = useRef<HTMLDivElement>(null);
+
+  // Update list height based on container size
+  useEffect(() => {
+    if (activityContainerRef.current) {
+      const updateHeight = () => {
+        const height = activityContainerRef.current?.clientHeight || 500;
+        setListHeight(height);
+      };
+      
+      updateHeight();
+      window.addEventListener('resize', updateHeight);
+      return () => window.removeEventListener('resize', updateHeight);
+    }
+  }, []);
 
   const people = [
     { name: "Violet", image: "https://randomuser.me/api/portraits/women/44.jpg" },
@@ -103,7 +128,7 @@ export default function Dashboard() {
           time: timeStr,
           date: dateStr,
           timestamp,
-          action: "Verified and entered through the",
+          action: "Verified, entered through the",
           location: locations[Math.floor(Math.random() * locations.length)],
         });
       } else if (activityType === "security") {
@@ -172,41 +197,171 @@ export default function Dashboard() {
     return filtered;
   }, [allActivities, timePeriod, searchQuery]);
 
-  // Group activities by date for display
-  const groupedActivities = useMemo(() => {
-    const groups: { [key: string]: Activity[] } = {};
+  // Flatten grouped activities for virtualizing
+  const flattenedActivities = useMemo(() => {
+    // First group by date
+    const groupedByDate: { [key: string]: Activity[] } = {};
     
     filteredActivities.forEach(activity => {
-      if (!groups[activity.date]) {
-        groups[activity.date] = [];
+      if (!groupedByDate[activity.date]) {
+        groupedByDate[activity.date] = [];
       }
-      groups[activity.date].push(activity);
+      groupedByDate[activity.date].push(activity);
+    });
+
+    // Then flatten into a single array with headers
+    const flattened: GroupedActivityItem[] = [];
+    
+    Object.entries(groupedByDate).forEach(([date, activities]) => {
+      // Add date header
+      flattened.push({ 
+        type: 'date-header', 
+        date: date === new Date().toLocaleDateString('en-US', { 
+          month: 'numeric', 
+          day: 'numeric', 
+          year: 'numeric' 
+        }).replace(/\//g, '/') ? 'Today' : date
+      });
+      
+      // Add activities
+      activities.forEach(activity => {
+        flattened.push({ type: 'activity', activity });
+      });
     });
     
-    return groups;
+    return flattened;
   }, [filteredActivities]);
+
+  // Calculate row heights based on content type
+  const getItemSize = (index: number) => {
+    const item = flattenedActivities[index];
+    if (!item) return 0;
+    
+    if (item.type === 'date-header') {
+      return 36; // Date headers are small
+    }
+    
+    const activity = item.activity;
+    if (!activity) return 0;
+    
+    // Different heights for different activity types
+    if (activity.type === 'security') {
+      return 100; // Security activities are shorter (no review button)
+    } else {
+      return 130; // Entry and alert activities need more space for review button
+    }
+  };
+
+  // Activity renderer for the virtualized list
+  const ActivityRow = ({ index, style }: ListChildComponentProps) => {
+    const item = flattenedActivities[index];
+    
+    if (item.type === 'date-header') {
+      return (
+        <div style={style} className="sticky z-10 top-0 bg-neutral-300 py-2 px-4">
+          <h4 className="text-sm font-medium text-neutral-500">
+            {item.date}
+          </h4>
+        </div>
+      );
+    }
+    
+    const activity = item.activity!;
+    
+    return (
+      <div style={style} className="px-4">
+        <div className="h-full py-4 border-b border-neutral-200 last:border-0">
+          {activity.type === "entry" ? (
+            <div>
+              <div className="activity-header">
+                <div className="activity-icon bg-green-100">
+                  <div className="absolute inset-0.5 bg-green-400 rounded-full"></div>
+                  <Image
+                    src={`https://randomuser.me/api/portraits/${
+                      activity.person.includes("Phoenix") || 
+                      activity.person.includes("Orlando") || 
+                      activity.person.includes("Drew") || 
+                      activity.person.includes("Tanner") ||
+                      activity.person.includes("Blake")
+                        ? "men" 
+                        : "women"
+                    }/${Math.floor(Math.random() * 70) + 1}.jpg`}
+                    alt={activity.person}
+                    width={32}
+                    height={32}
+                    className="rounded-full"
+                  />
+                </div>
+                <h4 className="text-base font-medium">{activity.person}</h4>
+                <span className="text-sm text-neutral-500 ml-auto">{activity.time}</span>
+              </div>
+              <p className="activity-content">
+                {activity.action}{" "}
+                <span className="font-medium">{activity.location}</span>
+              </p>
+              <Link href="/activity-review">
+                <button className="review-button">
+                  <Eye className="h-4 w-4" /> Review
+                </button>
+              </Link>
+            </div>
+          ) : activity.type === "security" ? (
+            <div>
+              <div className="activity-header">
+                <div className="activity-icon bg-green-100 flex items-center justify-center">
+                  <Eye className="h-5 w-5 text-green-600" />
+                </div>
+                <h4 className="text-base font-medium">{activity.title}</h4>
+                <span className="text-sm text-neutral-500 ml-auto">{activity.time}</span>
+              </div>
+              <p className="activity-content">{activity.description}</p>
+            </div>
+          ) : (
+            <div>
+              <div className="activity-header">
+                <div className="activity-icon bg-amber-100 flex items-center justify-center">
+                  <div className="h-4 w-4 bg-amber-400 rounded-full"></div>
+                </div>
+                <h4 className="text-base font-medium">{activity.title}</h4>
+                <span className="text-sm text-neutral-500 ml-auto">{activity.time}</span>
+              </div>
+              <p className="activity-content">{activity.description}</p>
+              <Link href="/activity-review">
+                <button className="review-button">
+                  <Eye className="h-4 w-4" /> Review
+                </button>
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="dashboard">
       {/* Left Panel */}
       <div className="dashboard-sidebar">
-        {/* User Info */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 rounded-full overflow-hidden">
+        {/* Property Header */}
+        <div className="flex items-center gap-4 mb-8 mt-4">
+          <div className="w-14 h-14 rounded-full overflow-hidden">
             <Image
               src="https://randomuser.me/api/portraits/men/74.jpg"
               alt="Ocean Estate"
-              width={48}
-              height={48}
+              width={56}
+              height={56}
               className="w-full h-full object-cover"
             />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-neutral-800">Ocean Estate</h2>
+            <h2 className="text-2xl font-semibold text-neutral-800">Ocean Estate</h2>
+            <p className="text-sm text-neutral-600">Security Dashboard</p>
           </div>
-          <button className="ml-auto bg-neutral-200 hover:bg-neutral-400 text-sm text-neutral-700 py-2 px-4 rounded-full transition">
-            Manage Access
-          </button>
+          <Link href="/manage-access" className="ml-auto">
+            <button className="bg-neutral-200 hover:bg-neutral-400 text-sm text-neutral-700 py-2 px-4 rounded-full transition">
+              Manage Access
+            </button>
+          </Link>
         </div>
 
         {/* Search Bar */}
@@ -248,11 +403,13 @@ export default function Dashboard() {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-neutral-800">6 People on Property</h3>
-            <button className="text-neutral-600 hover:text-neutral-800 text-sm">View All</button>
+            <Link href="/people" className="text-neutral-600 hover:text-neutral-800 text-sm">
+              View All
+            </Link>
           </div>
           <div className="flex space-x-6">
             {people.map((person, index) => (
-              <div key={index} className="flex flex-col items-center">
+              <Link key={index} href={`/people/${person.name.toLowerCase()}`} className="flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full overflow-hidden mb-2 relative">
                   {index === 2 && (
                     <div className="absolute inset-0 bg-blue-500/30 border-4 border-blue-500 rounded-full"></div>
@@ -266,13 +423,13 @@ export default function Dashboard() {
                   />
                 </div>
                 <span className="text-sm text-neutral-800">{person.name}</span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
 
         {/* Today's Activity */}
-        <div className="flex-1 overflow-auto pr-2">
+        <div className="flex-1 overflow-hidden flex flex-col" ref={activityContainerRef}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-neutral-800">
               {timePeriod === "today" 
@@ -287,97 +444,27 @@ export default function Dashboard() {
             <span className="text-sm text-neutral-500">{filteredActivities.length} events</span>
           </div>
 
-          <div className="space-y-6">
-            {Object.keys(groupedActivities).length > 0 ? (
-              Object.entries(groupedActivities).map(([date, activities]) => (
-                <div key={date} className="space-y-4">
-                  <h4 className="text-sm font-medium text-neutral-500 sticky top-0 bg-neutral-300 py-2">
-                    {date === new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }).replace(/\//g, '/') 
-                      ? 'Today' 
-                      : date
-                    }
-                  </h4>
-                  <div className="space-y-5">
-                    {activities.map((activity) => (
-                      <div key={activity.id} className="activity-item">
-                        {activity.type === "entry" ? (
-                          <div>
-                            <div className="activity-header">
-                              <div className="activity-icon bg-green-100">
-                                <div className="absolute inset-0.5 bg-green-400 rounded-full"></div>
-                                <Image
-                                  src={`https://randomuser.me/api/portraits/${
-                                    activity.person.includes("Phoenix") || 
-                                    activity.person.includes("Orlando") || 
-                                    activity.person.includes("Drew") || 
-                                    activity.person.includes("Tanner") ||
-                                    activity.person.includes("Blake")
-                                      ? "men" 
-                                      : "women"
-                                  }/${Math.floor(Math.random() * 70) + 1}.jpg`}
-                                  alt={activity.person}
-                                  width={32}
-                                  height={32}
-                                  className="rounded-full"
-                                />
-                              </div>
-                              <h4 className="text-base font-medium">{activity.person}</h4>
-                              <span className="text-sm text-neutral-500 ml-auto">{activity.time}</span>
-                            </div>
-                            <p className="activity-content">
-                              {activity.action}{" "}
-                              <span className="font-medium">{activity.location}</span>
-                            </p>
-                            <button className="review-button">
-                              <Eye className="h-4 w-4" /> Review
-                            </button>
-                          </div>
-                        ) : activity.type === "security" ? (
-                          <div>
-                            <div className="activity-header">
-                              <div className="activity-icon bg-green-100 flex items-center justify-center">
-                                <Eye className="h-5 w-5 text-green-600" />
-                              </div>
-                              <h4 className="text-base font-medium">{activity.title}</h4>
-                              <span className="text-sm text-neutral-500 ml-auto">{activity.time}</span>
-                            </div>
-                            <p className="activity-content">{activity.description}</p>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="activity-header">
-                              <div className="activity-icon bg-amber-100 flex items-center justify-center">
-                                <div className="h-4 w-4 bg-amber-400 rounded-full"></div>
-                              </div>
-                              <h4 className="text-base font-medium">{activity.title}</h4>
-                              <span className="text-sm text-neutral-500 ml-auto">{activity.time}</span>
-                            </div>
-                            <p className="activity-content">{activity.description}</p>
-                            <button className="review-button">
-                              <Eye className="h-4 w-4" /> Review
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-4 text-center text-neutral-500">
-                No activities found for this period
-              </div>
-            )}
-          </div>
+          {flattenedActivities.length > 0 ? (
+            <List
+              className="activities-list"
+              height={listHeight}
+              width="100%"
+              itemCount={flattenedActivities.length}
+              itemSize={getItemSize}
+              overscanCount={5}
+            >
+              {ActivityRow}
+            </List>
+          ) : (
+            <div className="py-4 text-center text-neutral-500">
+              No activities found for this period
+            </div>
+          )}
         </div>
       </div>
 
       {/* Main Content */}
       <div className="dashboard-main bg-neutral-600">
-        {/* SAURON Logo */}
-        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-10">
-          <h1 className="text-2xl font-light tracking-widest text-neutral-200">SAURON</h1>
-        </div>
 
         {/* Home 3D Model - Using a simple 3D-like visualization instead of hero image */}
         <div className="absolute inset-0 flex items-center justify-center">
@@ -396,19 +483,25 @@ export default function Dashboard() {
             
             {/* Hotspots */}
             <div className="absolute top-1/4 right-1/4">
-              <div className="hotspot">
-                <div className="hotspot-inner hotspot-ping"></div>
-              </div>
+              <Link href="/rooms/living-room">
+                <div className="hotspot">
+                  <div className="hotspot-inner hotspot-ping"></div>
+                </div>
+              </Link>
             </div>
             <div className="absolute top-1/3 left-1/3">
-              <div className="hotspot">
-                <div className="hotspot-inner hotspot-ping"></div>
-              </div>
+              <Link href="/rooms/kitchen">
+                <div className="hotspot">
+                  <div className="hotspot-inner hotspot-ping"></div>
+                </div>
+              </Link>
             </div>
             <div className="absolute bottom-1/4 right-1/3">
-              <div className="hotspot">
-                <div className="hotspot-inner hotspot-ping"></div>
-              </div>
+              <Link href="/rooms/bedroom">
+                <div className="hotspot">
+                  <div className="hotspot-inner hotspot-ping"></div>
+                </div>
+              </Link>
             </div>
           </div>
         </div>

@@ -156,7 +156,7 @@
   }
 
   .dashboard-sidebar {
-    @apply w-[450px] bg-neutral-300 shadow-lg rounded-r-3xl p-6 flex flex-col overflow-auto;
+    @apply w-[450px] bg-neutral-300 shadow-lg p-6 flex flex-col overflow-auto;
   }
 
   .dashboard-main {
@@ -192,7 +192,7 @@
   }
 
   .activity-header {
-    @apply flex items-center gap-3 mb-1;
+    @apply flex items-center gap-3 mb-2;
   }
 
   .activity-icon {
@@ -200,10 +200,28 @@
   }
 
   .activity-content {
-    @apply ml-11 text-neutral-700;
+    @apply ml-11 text-neutral-700 mb-2;
   }
 
   .review-button {
     @apply ml-11 mt-2 flex items-center gap-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 py-1.5 px-4 rounded-full text-sm;
+  }
+
+  /* Virtualized list styles */
+  .activities-list {
+    @apply overflow-auto;
+  }
+
+  /* Custom scrollbar styles */
+  .activities-list::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  .activities-list::-webkit-scrollbar-track {
+    @apply bg-neutral-200 rounded-full;
+  }
+
+  .activities-list::-webkit-scrollbar-thumb {
+    @apply bg-neutral-400 rounded-full hover:bg-neutral-500;
   }
 }
