@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef } from "react";
 import Image from "next/image";
-import { motion, useScroll, useTransform, cubicBezier } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 // Define feature card component
 const FeatureCard = ({ title, description, imageSrc, imageAlt, index }: {
@@ -14,7 +14,7 @@ const FeatureCard = ({ title, description, imageSrc, imageAlt, index }: {
 }) => {
   return (
     <div className="flex flex-col h-full w-full">
-      <div className="relative flex-1 mb-8 rounded-lg overflow-hidden">
+      <div className="relative flex-1 mb-8 md:mb-12 rounded-lg overflow-hidden">
         <Image
           src={imageSrc}
           alt={imageAlt}
@@ -23,9 +23,9 @@ const FeatureCard = ({ title, description, imageSrc, imageAlt, index }: {
           priority={index === 0}
         />
       </div>
-      <div className="space-y-4">
-        <h3 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-primary">{title}</h3>
-        <p className="text-xl md:text-2xl text-muted-foreground">
+      <div className="space-y-4 md:space-y-6">
+        <h3 className="text-3xl md:text-5xl lg:text-6xl font-semibold text-primary">{title}</h3>
+        <p className="text-xl md:text-2xl lg:text-3xl text-muted-foreground">
           {description}
         </p>
       </div>
@@ -35,7 +35,6 @@ const FeatureCard = ({ title, description, imageSrc, imageAlt, index }: {
 
 export default function Features() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const sectionRef = useRef<HTMLElement>(null);
 
   // Features data
   const features = [
@@ -59,142 +58,93 @@ export default function Features() {
     },
   ];
 
-  // Calculate how many features we have and the scroll positions for each
+  // Calculate how many features we have
   const featureCount = features.length;
-  const scrollSegmentSize = 1 / featureCount;
   
-  // Define custom easing functions - make them even smoother
-  const smoothEase = cubicBezier(0.25, 0.1, 0.25, 1); // Standard ease transition
-  const backEase = cubicBezier(0.25, 0.8, 0.25, 1);   // More gradual ease
-  const bounceEase = cubicBezier(0.34, 1.25, 0.64, 1); // Reduced bounce for smoother motion
-  
-  // Create a scroll progress tracker that starts earlier and ends later
+  // Create a scroll progress tracker with extended end offset
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ["start end", "end start"], // Start when top of container reaches bottom of viewport, end when bottom reaches top
+    offset: ["start end", "end 20%"], // Changed from "end start" to "end 20%" to keep tracking longer
   });
 
   return (
-    <section ref={sectionRef} className="bg-background relative">
+    <section className="bg-background relative">
       <div className="text-center py-8">
         <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold">The Sauron Platform</h2>
       </div>
 
-      {/* Scroll animation container - reduced height to ensure seamless transition */}
+      {/* Scroll animation container - increased height for more scroll distance */}
       <div 
         ref={containerRef} 
-        className="h-[220vh] relative"
+        className="h-[300vh] relative" // Increased from 250vh to 300vh
       >
-        {/* Sticky container to hold the cards */}
-        <div className="min-h-screen sticky top-0 flex items-center justify-center overflow-hidden">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative h-[80vh] max-h-[900px]">
+        {/* Sticky container to take up full viewport - increased bottom offset to stay sticky longer */}
+        <div className="min-h-screen h-screen w-screen sticky top-0 left-0 right-0 overflow-hidden">
+          <div className="w-full h-full relative">
             {features.map((feature, index) => {
-              // Wider, more gradual transition windows with more overlap
-              const startShow = index === 0 ? 0 : Math.max(0, index * scrollSegmentSize - 0.15);
-              const fullyVisible = index === 0 ? 0.15 : index * scrollSegmentSize + 0.2; 
-              const startHide = (index + 0.65) * scrollSegmentSize;
+              // Calculate display ranges
+              const progress = 1 / featureCount;
+              const start = index * progress;
+              const end = start + progress;
               
-              // Make the last card finish much earlier to avoid blank space
-              const endHide = index === features.length - 1 
-                ? Math.min(0.85, (index + 1) * scrollSegmentSize) 
-                : (index + 1.1) * scrollSegmentSize;
+              // Adjust transition timing for all cards with more overlap
+              // Each card gets a wider visibility window with extended fadeout
+              let showPoints, showValues;
+              
+              if (index === 0) {
+                // First card: show immediately, hide gradually around 40-55% scroll
+                showPoints = [0, 0, 0.4, 0.55];
+                showValues = [1, 1, 1, 0];
+              } else if (index === 1) {
+                // Second card: start appearing around 30%, fully visible at 45%
+                // Stay visible until 65-75% scroll
+                showPoints = [0.3, 0.45, 0.65, 0.75]; 
+                showValues = [0, 1, 1, 0];
+              } else {
+                // Third card: start appearing earlier, and continue longer
+                // Complete its animation well before the end of the container
+                showPoints = [0.6, 0.75, 0.85, 0.95]; 
+                showValues = [0, 1, 1, 0];
+              }
 
-              // More gradual opacity transitions with longer crossfade periods
+              // Opacity transform
               const opacity = useTransform(
                 scrollYProgress,
-                [
-                  startShow, 
-                  fullyVisible, 
-                  startHide, 
-                  endHide
-                ],
-                [
-                  index === 0 ? 0.6 : 0, 
-                  1, 
-                  1, 
-                  0
-                ],
-                { ease: smoothEase }
+                showPoints,
+                showValues
               );
               
-              // Smoother position transitions with longer movement periods
-              const y = useTransform(
+              // Y position transform - customized per card
+              const yPos = useTransform(
                 scrollYProgress,
-                [
-                  startShow,
-                  startShow + 0.05, 
-                  fullyVisible - 0.05,
-                  fullyVisible
-                ],
-                [
-                  index === 0 ? 40 : 140, 
-                  index === 0 ? 30 : 100,
-                  20,
-                  0
-                ],
-                { ease: backEase }
+                showPoints,
+                index === 0 
+                  ? [0, 0, 0, 30] // First card: reduced exit movement
+                  : index === 1
+                    ? [100, 0, 0, -30] // Second card: standard movement
+                    : [80, 0, 0, 20] // Reduced motion values for third card
               );
               
-              // More gradual scale transitions
+              // Scale transform
               const scale = useTransform(
                 scrollYProgress,
-                [
-                  startShow, 
-                  startShow + 0.05,
-                  fullyVisible - 0.05, 
-                  fullyVisible
-                ],
-                [
-                  index === 0 ? 0.96 : 0.88,
-                  index === 0 ? 0.97 : 0.9, 
-                  0.98,
-                  1
-                ],
-                { ease: bounceEase }
+                showPoints,
+                index === 0 
+                  ? [1, 1, 1, 0.95] // First card: minimal scale reduction
+                  : index === 1
+                    ? [0.9, 1, 1, 0.95] // Second card: standard scaling
+                    : [0.92, 1, 1, 0.97] // Subtler scale animation for third card
               );
               
-              // Smoother rotation transitions
+              // Rotation transform
               const rotate = useTransform(
                 scrollYProgress,
-                [
-                  startShow, 
-                  startShow + 0.05,
-                  fullyVisible - 0.05,
-                  fullyVisible,
-                  startHide,
-                  endHide
-                ],
-                [
-                  index === 0 ? 0.8 : 2.5,
-                  index === 0 ? 0.6 : 1.8, 
-                  0.3,
-                  0,
-                  -0.3,
-                  -0.8
-                ],
-                { ease: backEase }
-              );
-
-              // Smoother horizontal movement
-              const x = useTransform(
-                scrollYProgress,
-                [
-                  startShow, 
-                  startShow + 0.05,
-                  fullyVisible - 0.05,
-                  fullyVisible,
-                  startHide,
-                  endHide
-                ],
-                [
-                  index === 0 ? 15 : 40, 
-                  index === 0 ? 10 : 30,
-                  5,
-                  0,
-                  -5,
-                  -15
-                ],
-                { ease: backEase }
+                showPoints,
+                index === 0 
+                  ? [0, 0, 0, -0.5] // First card: minimal rotation
+                  : index === 1
+                    ? [2, 0, 0, -0.5] // Second card: standard rotation
+                    : [1.5, 0, 0, -0.3] // Reduced rotation for third card
               );
 
               return (
@@ -203,34 +153,33 @@ export default function Features() {
                   className="absolute inset-0 w-full h-full"
                   style={{
                     opacity,
-                    y,
-                    x,
+                    y: yPos,
                     scale,
                     rotateZ: rotate,
                     zIndex: features.length - index,
                   }}
-                  // Add transition properties for smoother motion
                   transition={{ 
-                    duration: 0.2,
-                    ease: [0.25, 0.1, 0.25, 1] 
+                    duration: 0.3, 
+                    ease: [0.4, 0, 0.2, 1]
                   }}
-                  // Initial values match the animation start state
                   initial={{ 
-                    opacity: index === 0 ? 0.6 : 0,
-                    y: index === 0 ? 40 : 140,
-                    x: index === 0 ? 15 : 40,
-                    scale: index === 0 ? 0.96 : 0.88,
-                    rotateZ: index === 0 ? 0.8 : 2.5
+                    opacity: index === 0 ? 1 : 0,
+                    y: index === 0 ? 0 : 100,
+                    scale: index === 0 ? 1 : 0.9,
+                    rotateZ: index === 0 ? 0 : 2
                   }}
                 >
-                  <div className="w-full h-full bg-card border border-border/10 shadow-2xl rounded-2xl p-6 md:p-10 lg:p-12 overflow-hidden">
-                    <FeatureCard
-                      title={feature.title}
-                      description={feature.description}
-                      imageSrc={feature.imageSrc}
-                      imageAlt={feature.imageAlt}
-                      index={index}
-                    />
+                  {/* Full viewport card with no margins or max-width constraints */}
+                  <div className="w-full h-full bg-card border border-border/10 shadow-2xl">
+                    <div className="w-full h-full p-8 md:p-16 lg:p-20 overflow-hidden">
+                      <FeatureCard
+                        title={feature.title}
+                        description={feature.description}
+                        imageSrc={feature.imageSrc}
+                        imageAlt={feature.imageAlt}
+                        index={index}
+                      />
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -238,8 +187,8 @@ export default function Features() {
           </div>
         </div>
 
-        {/* Add a spacer div at the end to ensure smooth transition to next section */}
-        <div className="h-[15vh]"></div>
+        {/* Spacer to ensure smooth transition to next section */}
+        <div className="h-[50vh]"></div>
       </div>
     </section>
   );
