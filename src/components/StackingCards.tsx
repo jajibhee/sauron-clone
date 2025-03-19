@@ -31,6 +31,66 @@ const Card: React.FC<CardProps> = ({ title, description, index, backgroundColor 
   );
 };
 
+// Animated Card component that handles its own animations
+const AnimatedCard = ({ 
+  card, 
+  index, 
+  scrollYProgress 
+}: { 
+  card: { 
+    title: string; 
+    description: string; 
+    backgroundColor: string; 
+  }; 
+  index: number; 
+  scrollYProgress: any;
+}) => {
+  // Transform values based on scroll progress
+  const opacity = useTransform(
+    scrollYProgress,
+    [index * 0.3, index * 0.3 + 0.1, index * 0.3 + 0.3, index * 0.3 + 0.4],
+    [index === 0 ? 1 : 0, 1, 1, 0]
+  );
+  
+  const y = useTransform(
+    scrollYProgress,
+    [index * 0.3, index * 0.3 + 0.3],
+    [100, 0]
+  );
+  
+  const scale = useTransform(
+    scrollYProgress,
+    [index * 0.3, index * 0.3 + 0.3],
+    [0.8, 1]
+  );
+  
+  const rotate = useTransform(
+    scrollYProgress,
+    [index * 0.3, index * 0.3 + 0.3],
+    [5, 0]
+  );
+
+  return (
+    <motion.div
+      key={index}
+      className="absolute inset-0 rounded-xl shadow-xl"
+      style={{
+        opacity,
+        y,
+        scale,
+        rotateZ: rotate,
+      }}
+    >
+      <Card
+        title={card.title}
+        description={card.description}
+        index={index}
+        backgroundColor={card.backgroundColor}
+      />
+    </motion.div>
+  );
+};
+
 export default function StackingCards() {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -71,52 +131,14 @@ export default function StackingCards() {
           className="relative h-[180vh] w-full"
         >
           <div className="sticky top-20 h-[500px] w-full max-w-3xl mx-auto">
-            {cards.map((card, index) => {
-              // Transform values based on scroll progress
-              const opacity = useTransform(
-                scrollYProgress,
-                [index * 0.3, index * 0.3 + 0.1, index * 0.3 + 0.3, index * 0.3 + 0.4],
-                [index === 0 ? 1 : 0, 1, 1, 0]
-              );
-              
-              const y = useTransform(
-                scrollYProgress,
-                [index * 0.3, index * 0.3 + 0.3],
-                [100, 0]
-              );
-              
-              const scale = useTransform(
-                scrollYProgress,
-                [index * 0.3, index * 0.3 + 0.3],
-                [0.8, 1]
-              );
-              
-              const rotate = useTransform(
-                scrollYProgress,
-                [index * 0.3, index * 0.3 + 0.3],
-                [5, 0]
-              );
-
-              return (
-                <motion.div
-                  key={index}
-                  className="absolute inset-0 rounded-xl shadow-xl"
-                  style={{
-                    opacity,
-                    y,
-                    scale,
-                    rotateZ: rotate,
-                  }}
-                >
-                  <Card
-                    title={card.title}
-                    description={card.description}
-                    index={index}
-                    backgroundColor={card.backgroundColor}
-                  />
-                </motion.div>
-              );
-            })}
+            {cards.map((card, index) => (
+              <AnimatedCard
+                key={index}
+                card={card}
+                index={index}
+                scrollYProgress={scrollYProgress}
+              />
+            ))}
           </div>
         </div>
       </div>
