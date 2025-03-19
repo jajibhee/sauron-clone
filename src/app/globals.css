@@ -89,11 +89,11 @@
 
 /* Navigation */
 .nav-container {
-  @apply relative z-50 flex items-center justify-between py-4;
+  @apply relative z-50 flex items-center justify-between py-5;
 }
 
 .nav-logo {
-  @apply h-8 w-auto;
+  @apply h-9 w-auto;
 }
 
 .nav-links {
@@ -101,7 +101,7 @@
 }
 
 .nav-link {
-  @apply text-sm font-medium transition-colors;
+  @apply text-base md:text-lg font-medium transition-colors;
 }
 
 /* Footer */
@@ -126,11 +126,11 @@
 
   /* Navbar */
   .nav-container {
-    @apply relative z-50 flex items-center justify-between py-4;
+    @apply relative z-50 flex items-center justify-between py-5;
   }
 
   .nav-logo {
-    @apply h-8 w-auto;
+    @apply h-9 w-auto;
   }
 
   .nav-links {
@@ -138,7 +138,7 @@
   }
 
   .nav-link {
-    @apply text-sm font-medium transition-colors;
+    @apply text-base md:text-lg font-medium transition-colors;
   }
 
   /* Footer */

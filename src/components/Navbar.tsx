@@ -20,18 +20,18 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden md:flex items-center space-x-8">
-          <Link href="/about" className="nav-link text-white hover:text-primary">
+          {/* <Link href="/about" className="nav-link text-white hover:text-primary">
             About
-          </Link>
+          </Link> */}
           <Link href="/dashboard" className="nav-link text-white hover:text-primary">
             Dashboard
           </Link>
-          <Link href="https://jobs.ashbyhq.com/sauron" className="nav-link text-white hover:text-primary" target="_blank">
+          {/* <Link href="https://jobs.ashbyhq.com/sauron" className="nav-link text-white hover:text-primary" target="_blank">
             Careers
           </Link>
           <Link href="/reserve" className="nav-link text-white hover:text-primary">
             Reserve
-          </Link>
+          </Link> */}
         </div>
 
         <div className="md:hidden flex items-center">
@@ -55,21 +55,21 @@ export default function Navbar() {
           <div className="container py-4 space-y-4">
             <Link
               href="/about"
-              className="block py-2 text-white hover:text-primary"
+              className="block py-2 text-lg text-white hover:text-primary"
               onClick={() => setIsMenuOpen(false)}
             >
               About
             </Link>
             <Link
               href="/dashboard"
-              className="block py-2 text-white hover:text-primary"
+              className="block py-2 text-lg text-white hover:text-primary"
               onClick={() => setIsMenuOpen(false)}
             >
               Dashboard
             </Link>
             <Link
               href="https://jobs.ashbyhq.com/sauron"
-              className="block py-2 text-white hover:text-primary"
+              className="block py-2 text-lg text-white hover:text-primary"
               onClick={() => setIsMenuOpen(false)}
               target="_blank"
             >
@@ -77,7 +77,7 @@ export default function Navbar() {
             </Link>
             <Link
               href="/reserve"
-              className="block py-2 text-white hover:text-primary"
+              className="block py-2 text-lg text-white hover:text-primary"
               onClick={() => setIsMenuOpen(false)}
             >
               Reserve
